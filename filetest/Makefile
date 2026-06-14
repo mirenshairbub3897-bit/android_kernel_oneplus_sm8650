@@ -1,9 +1,10 @@
+# filetest/Makefile
 obj-m := hello.o
-KERNELDIR ?= $(KDIR)
+KERNELDIR := $(PWD)/..
 PWD := $(shell pwd)
 
 default:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+    $(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 
 clean:
-	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+    $(MAKE) -C $(KERNELDIR) M=$(PWD) clean
