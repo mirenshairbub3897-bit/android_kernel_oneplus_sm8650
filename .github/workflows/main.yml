@@ -1,7 +1,7 @@
 name: Build Module From Forked Repo
 
 on:
-  workflow_dispatch: # Taaki aap GitHub website se click karke jab chahein chala sakein
+  workflow_dispatch: # GitHub website se manually chalane ke liye
 
 jobs:
   build-ko:
@@ -11,7 +11,6 @@ jobs:
     - name: Checkout Forked Code
       uses: actions/checkout@v4
       with:
-        # Isse aapka wahi branch checkout hoga jisme aap kaam kar rhe hain (Default Branch)
         ref: ${{ github.ref_name }}
 
     - name: Install Compiling Dependencies
@@ -19,24 +18,32 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y bc build-essential libelf-dev libssl-dev bison flex git crossbuild-essential-arm64
 
+    # --- Toolchain Caching (Isse baar-baar download nahi hoga) ---
+    - name: Cache Android Clang Toolchain
+      id: cache-toolchain
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/toolchain
+        key: clang-toolchain-r485591
+
     - name: Get Android Clang Compiler
+      if: steps.cache-toolchain.outputs.cache-hit != 'true'
       run: |
         mkdir -p ${{ github.workspace }}/toolchain
         cd ${{ github.workspace }}/toolchain
-        # Kernel compile karne ke liye official Android Clang compiler download kar rhe hain
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts-clang --depth=1
+    # -------------------------------------------------------------
 
     - name: Verify and Prepare Kernel Config
       run: |
         cd ${{ github.workspace }}/gki-kernel
         
-        # Architecture aur Tools ka rasta compiler ko de rhe hain
         export ARCH=arm64
         export SUBARCH=arm64
         export CROSS_COMPILE=aarch64-linux-gnu-
         export PATH="${{ github.workspace }}/toolchain/prebuilts-clang/clang-r485591/bin:$PATH"
         
-        # Agar aapki .config file folder me hai, toh yeh use kernel ke liye sync kar dega
+        # Aapki .config file ko check aur ready karega
         make CC=clang CLANG_TRIPLE=aarch64-linux-gnu- olddefconfig
 
     - name: Build Module (.ko)
@@ -46,12 +53,13 @@ jobs:
         export CROSS_COMPILE=aarch64-linux-gnu-
         export PATH="${{ github.workspace }}/toolchain/prebuilts-clang/clang-r485591/bin:$PATH"
         
-        # Aapke naye folder 'filetest' me jaakar compilation start karega
+        # Aapke 'filetest' folder me jaakar compile karega
         cd ${{ github.workspace }}/filetest
         make CC=clang CLANG_TRIPLE=aarch64-linux-gnu- KERNEL_SRC=${{ github.workspace }}/gki-kernel
 
+    # --- FIX: Sahi action ka naam yahan hai ---
     - name: Upload Output File
-      uses: actions/artifacts@v4
+      uses: actions/upload-artifact@v4
       with:
         name: OnePlus-13R-Test-Module
         path: filetest/*.ko
