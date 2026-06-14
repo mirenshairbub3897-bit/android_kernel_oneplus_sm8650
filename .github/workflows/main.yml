@@ -19,20 +19,16 @@ jobs:
           bc bison build-essential ccache curl flex g++-multilib gcc-multilib \
           git gnupg gperf libelf-dev liblz4-tool libncurses-dev libsdl1.2-dev \
           libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool \
-          squashfs-tools xsltproc zip zlib1g-dev llvm clang wget tar
+          squashfs-tools xsltproc zip zlib1g-dev llvm clang
 
-    # --- FIX: Google Source Git-Archive bypass karke fixed tarball link use kar rhe hain ---
-    - name: Get Android Clang Compiler (Reliable Download)
+    # --- APNA PURANA TRUSTED CLONE METHOD (With Smart Filtering) ---
+    - name: Get Android Clang Compiler (Full Repo)
       run: |
         mkdir -p ${{ github.workspace }}/toolchain
-        cd ${{ github.workspace }}/toolchain
         
-        # Ekdam stable direct download link use kar rhe hain jahan se error nahi aayega
-        wget https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/android15-gki_r1/clang-r485591.tar.gz
-        
-        # Isko extract karenge aur error check karenge
-        tar -xzf clang-r485591.tar.gz || { echo "Extraction failed!"; exit 1; }
-        rm clang-r485591.tar.gz
+        # Isme thoda 10-15 minit ka time lagega, hone dena aram se.
+        # --filter=blob:none se space full nahi hoga aur exact files mil jayengi.
+        git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 ${{ github.workspace }}/toolchain --depth=1 --filter=blob:none
     # -----------------------------------------------------------------
 
     - name: Prepare Kernel Configuration
@@ -42,9 +38,14 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         export CROSS_COMPILE=aarch64-linux-gnu-
-        export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
         
-        # .config ko ready karein (make sure aapki .config gki-kernel folder me ho)
+        # Path setting jo exact toolchain folder ko point karegi
+        export PATH="${{ github.workspace }}/toolchain/clang-r485591/bin:$PATH"
+        if [ ! -d "${{ github.workspace }}/toolchain/clang-r485591" ]; then
+          export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
+        fi
+        
+        # .config ready karein
         make CC=clang CLANG_TRIPLE=aarch64-linux-gnu- olddefconfig
 
     - name: Build Module (.ko)
@@ -52,7 +53,11 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         export CROSS_COMPILE=aarch64-linux-gnu-
-        export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
+        
+        export PATH="${{ github.workspace }}/toolchain/clang-r485591/bin:$PATH"
+        if [ ! -d "${{ github.workspace }}/toolchain/clang-r485591" ]; then
+          export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
+        fi
         
         cd ${{ github.workspace }}/filetest
         make CC=clang CLANG_TRIPLE=aarch64-linux-gnu- KDIR=${{ github.workspace }}/gki-kernel
