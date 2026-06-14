@@ -1,8 +1,8 @@
-name: Build Kernel Module
+name: Build Kernel Module (OnePlus 13R)
 
 on:
-  push:
   workflow_dispatch:
+  push:
 
 jobs:
   build:
@@ -12,28 +12,42 @@ jobs:
     - name: Checkout kernel source
       uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install dependencies (FIXED)
       run: |
         sudo apt update
-        sudo apt install -y bc bison flex libssl-dev make git clang llvm
+        sudo apt install -y \
+          bc bison flex libssl-dev make git \
+          clang llvm lld \
+          python3 gcc-aarch64-linux-gnu
 
-    - name: Setup environment
+    - name: Set environment (LLVM FIX)
       run: |
         echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "SUBARCH=arm64" >> $GITHUB_ENV
         echo "CC=clang" >> $GITHUB_ENV
         echo "LLVM=1" >> $GITHUB_ENV
         echo "LLVM_IAS=1" >> $GITHUB_ENV
+        echo "LD=ld.lld" >> $GITHUB_ENV
 
-    - name: Prepare kernel build
+    - name: Verify toolchain
       run: |
-        make defconfig || true
-        make modules_prepare || true
+        clang --version
+        ld.lld --version
+
+    - name: Prepare kernel config (FIXED)
+      run: |
+        make ARCH=arm64 O=out defconfig
+        make ARCH=arm64 O=out modules_prepare
 
     - name: Build hello module
       run: |
-        make M=filetest modules
+        make ARCH=arm64 O=out M=filetest modules
 
-    - name: Upload artifact
+    - name: Show output
+      run: |
+        ls -lah filetest || true
+
+    - name: Upload .ko
       uses: actions/upload-artifact@v4
       with:
         name: hello-ko
