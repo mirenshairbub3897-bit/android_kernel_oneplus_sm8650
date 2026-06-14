@@ -1,22 +1,36 @@
-# .github/workflows/build.yml
 name: Build Module Pro
 on: workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Forked Code
+    - name: Checkout code
       uses: actions/checkout@v4
-    - name: Install Essential Build Tools & Linker
+
+    - name: Install tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison flex libelf-dev libssl-dev rsync lld clang llvm
-    - name: Build Module (.ko)
+        sudo apt-get install -y bc bison flex libelf-dev libssl-dev lld clang llvm
+
+    - name: Fix broken Kconfig reference
+      run: |
+        # Comment out the line that causes error
+        sed -i 's/^source "kernel\/oplus_cpu\/sched\/Kconfig"/# source "kernel\/oplus_cpu\/sched\/Kconfig"/' init/Kconfig
+
+    - name: Generate kernel config headers
+      run: |
+        export ARCH=arm64
+        # oldconfig will use your existing .config and generate auto.conf
+        make olddefconfig
+        make modules_prepare
+
+    - name: Build module
       run: |
         cd filetest
         export ARCH=arm64
         make -C ${{ github.workspace }} M=$(pwd) LLVM=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- modules
-    - name: Upload Finished Module
+
+    - name: Upload .ko
       uses: actions/upload-artifact@v4
       with:
         name: OnePlus-13R-Module
