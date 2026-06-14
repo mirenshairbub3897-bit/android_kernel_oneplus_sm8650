@@ -1,4 +1,4 @@
-name: Build Module Pro
+name: Build Kernel Module
 
 on:
   workflow_dispatch:
@@ -7,39 +7,31 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Forked Code
+    - name: Checkout code
       uses: actions/checkout@v4
-      with:
-        ref: ${{ github.ref_name }}
 
-    - name: Install Essential Build Tools & Linker
+    - name: Install build tools
       run: |
         sudo apt-get update
-        # Built-in Clang ke sath 'lld' package dalna zaroori hai ld.lld ke liye
-        sudo apt-get install -y bc bison flex libelf-dev libssl-dev rsync lld clang llvm
+        sudo apt-get install -y bc bison flex libelf-dev libssl-dev lld clang llvm make gcc
 
-    - name: Prepare Kernel Configuration
+    - name: Setup kernel source
       run: |
         cd ${{ github.workspace }}
-        
         export ARCH=arm64
-        export SUBARCH=arm64
-        
-        # LLVM=1 ke sath target triple diya hai taaki built-in compiler sahi se configure ho
+        # Prepare kernel config (phone ke kernel source ke liye)
         make LLVM=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- olddefconfig
+        # Essential for external modules: prepare build environment
+        make LLVM=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- modules_prepare
 
-    - name: Build Module (.ko)
+    - name: Build module
       run: |
         cd ${{ github.workspace }}/filetest
-        
         export ARCH=arm64
-        export SUBARCH=arm64
-        
-        # Built-in compiler se direct module compilation
         make LLVM=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- KDIR=${{ github.workspace }}
 
-    - name: Upload Finished Module
+    - name: Upload .ko file
       uses: actions/upload-artifact@v4
       with:
-        name: OnePlus-13R-Module
+        name: hello-module
         path: filetest/*.ko
