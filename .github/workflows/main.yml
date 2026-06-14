@@ -1,37 +1,40 @@
-name: Build Module Pro
-on: workflow_dispatch
+name: Build Kernel Module
+
+on:
+  push:
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout code
+    - name: Checkout kernel source
       uses: actions/checkout@v4
 
-    - name: Install tools
+    - name: Install dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y bc bison flex libelf-dev libssl-dev lld clang llvm
+        sudo apt update
+        sudo apt install -y bc bison flex libssl-dev make git clang llvm
 
-    - name: Fix broken Kconfig reference
+    - name: Setup environment
       run: |
-        # Comment out the line that causes error
-        sed -i 's/^source "kernel\/oplus_cpu\/sched\/Kconfig"/# source "kernel\/oplus_cpu\/sched\/Kconfig"/' init/Kconfig
+        echo "ARCH=arm64" >> $GITHUB_ENV
+        echo "CC=clang" >> $GITHUB_ENV
+        echo "LLVM=1" >> $GITHUB_ENV
+        echo "LLVM_IAS=1" >> $GITHUB_ENV
 
-    - name: Generate kernel config headers
+    - name: Prepare kernel build
       run: |
-        export ARCH=arm64
-        # oldconfig will use your existing .config and generate auto.conf
-        make olddefconfig
-        make modules_prepare
+        make defconfig || true
+        make modules_prepare || true
 
-    - name: Build module
+    - name: Build hello module
       run: |
-        cd filetest
-        export ARCH=arm64
-        make -C ${{ github.workspace }} M=$(pwd) LLVM=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- modules
+        make M=filetest modules
 
-    - name: Upload .ko
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OnePlus-13R-Module
+        name: hello-ko
         path: filetest/*.ko
