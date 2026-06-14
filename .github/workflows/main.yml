@@ -12,49 +12,31 @@ jobs:
       with:
         ref: ${{ github.ref_name }}
 
-    - name: Install Modern Compiling Dependencies
+    - name: Install Essential Build Tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
-          bc bison build-essential ccache curl flex g++-multilib gcc-multilib \
-          git gnupg gperf libelf-dev liblz4-tool libncurses-dev libsdl1.2-dev \
-          libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool \
-          squashfs-tools xsltproc zip zlib1g-dev llvm clang binutils-aarch64-linux-gnu
-
-    - name: Get Android Clang Compiler (Full Repo)
-      run: |
-        mkdir -p ${{ github.workspace }}/toolchain
-        git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 ${{ github.workspace }}/toolchain --depth=1 --filter=blob:none
+        sudo apt-get install -y bc bison flex libelf-dev libssl-dev rsync
 
     - name: Prepare Kernel Configuration
       run: |
         cd ${{ github.workspace }}
         
+        # Architecture set karenge
         export ARCH=arm64
         export SUBARCH=arm64
-        export CROSS_COMPILE=aarch64-linux-gnu-
-        export PATH="${{ github.workspace }}/toolchain/clang-r485591/bin:$PATH"
-        if [ ! -d "${{ github.workspace }}/toolchain/clang-r485591" ]; then
-          export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
-        fi
         
-        # LLVM=1 aur LD=ld.lld force kiya hai taaki naya linker direct use ho
-        make LLVM=1 LLVM_IAS=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- olddefconfig
+        # GitHub ka built-in Clang aur LLD use karne ke liye LLVM=1 force karenge
+        make LLVM=1 CC=clang LD=ld.lld olddefconfig
 
     - name: Build Module (.ko)
       run: |
-        export ARCH=arm64
-        export SUBARCH=arm64
-        export CROSS_COMPILE=aarch64-linux-gnu-
-        export PATH="${{ github.workspace }}/toolchain/clang-r485591/bin:$PATH"
-        if [ ! -d "${{ github.workspace }}/toolchain/clang-r485591" ]; then
-          export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
-        fi
-        
         cd ${{ github.workspace }}/filetest
         
-        # Compilation me bhi LLVM aur naye Linker ko active rakha hai
-        make LLVM=1 LLVM_IAS=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- KDIR=${{ github.workspace }}
+        export ARCH=arm64
+        export SUBARCH=arm64
+        
+        # GitHub ke default compiler se direct compilation
+        make LLVM=1 CC=clang LD=ld.lld KDIR=${{ github.workspace }}
 
     - name: Upload Finished Module
       uses: actions/upload-artifact@v4
