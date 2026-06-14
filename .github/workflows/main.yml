@@ -19,17 +19,15 @@ jobs:
           bc bison build-essential ccache curl flex g++-multilib gcc-multilib \
           git gnupg gperf libelf-dev liblz4-tool libncurses-dev libsdl1.2-dev \
           libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool \
-          squashfs-tools xsltproc zip zlib1g-dev llvm clang
+          squashfs-tools xsltproc zip zlib1g-dev llvm clang binutils-aarch64-linux-gnu
 
     - name: Get Android Clang Compiler (Full Repo)
       run: |
         mkdir -p ${{ github.workspace }}/toolchain
-        # Isme 10-15 minit ka time lagega, hone dena aram se.
         git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 ${{ github.workspace }}/toolchain --depth=1 --filter=blob:none
 
     - name: Prepare Kernel Configuration
       run: |
-        # FIX: Ab kisi sub-folder me nahi jana, direct main workspace me chalega
         cd ${{ github.workspace }}
         
         export ARCH=arm64
@@ -40,8 +38,8 @@ jobs:
           export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
         fi
         
-        # Aapne .config main page par hi daali hai, toh yeh use direct verify karega
-        make CC=clang CLANG_TRIPLE=aarch64-linux-gnu- olddefconfig
+        # LLVM=1 aur LD=ld.lld force kiya hai taaki naya linker direct use ho
+        make LLVM=1 LLVM_IAS=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- olddefconfig
 
     - name: Build Module (.ko)
       run: |
@@ -53,11 +51,10 @@ jobs:
           export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
         fi
         
-        # filetest folder me jaakar compile karein
         cd ${{ github.workspace }}/filetest
         
-        # FIX: KDIR ka path ab direct main workspace ko point karega
-        make CC=clang CLANG_TRIPLE=aarch64-linux-gnu- KDIR=${{ github.workspace }}
+        # Compilation me bhi LLVM aur naye Linker ko active rakha hai
+        make LLVM=1 LLVM_IAS=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- KDIR=${{ github.workspace }}
 
     - name: Upload Finished Module
       uses: actions/upload-artifact@v4
