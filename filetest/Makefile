@@ -1,10 +1,9 @@
-obj-m += hello.o
+obj-m := hello.o
+KERNELDIR ?= $(KDIR)
+PWD := $(shell pwd)
 
-# KDIR ka path hum variable se lenge jo GitHub Action pass karega
-KDIR ?= $(KERNEL_SRC)
-
-all:
-	$(MAKE) -C $(KDIR) M=$(PWD) modules
+default:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 
 clean:
-	$(MAKE) -C $(KDIR) M=$(PWD) clean
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
