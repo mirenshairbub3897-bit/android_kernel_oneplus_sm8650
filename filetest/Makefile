@@ -1,10 +1,9 @@
-# filetest/Makefile
-obj-m := hello.o
-KERNELDIR := $(PWD)/..
-PWD := $(shell pwd)
+obj-m += hello.o
 
-default:
-    $(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+KDIR := /github/workspace
+
+all:
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
 
 clean:
-    $(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+	$(MAKE) -C $(KDIR) M=$(PWD) clean
