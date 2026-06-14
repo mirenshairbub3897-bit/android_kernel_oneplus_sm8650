@@ -1,49 +1,51 @@
-name: Build Module From Forked Repo
+name: Build Module Pro
 
 on:
-  workflow_dispatch: # GitHub website se manually chalane ke liye
+  workflow_dispatch:
 
 jobs:
-  build-ko:
+  build:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout Forked Code
       uses: actions/checkout@v4
       with:
         ref: ${{ github.ref_name }}
 
-    - name: Install Compiling Dependencies
+    - name: Install All Necessary Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc build-essential libelf-dev libssl-dev bison flex git crossbuild-essential-arm64
+        sudo apt-get install -y \
+          bc bison build-essential ccache curl flex g++-multilib gcc-multilib \
+          git gnupg gperf imagemagick lib32ncurses5-dev lib32readline-gplv2-dev \
+          lib32z1-dev libelf-dev liblz4-tool libncurses5-dev libsdl1.2-dev \
+          libssl-dev libxml2 libxml2-utils lzop pngcrush rsync schedtool \
+          squashfs-tools xsltproc zip zlib1g-dev llvm clang
 
-    # --- Toolchain Caching (Isse baar-baar download nahi hoga) ---
     - name: Cache Android Clang Toolchain
       id: cache-toolchain
       uses: actions/cache@v4
       with:
         path: ${{ github.workspace }}/toolchain
-        key: clang-toolchain-r485591
+        key: clang-toolchain-android-latest
 
     - name: Get Android Clang Compiler
       if: steps.cache-toolchain.outputs.cache-hit != 'true'
       run: |
         mkdir -p ${{ github.workspace }}/toolchain
-        cd ${{ github.workspace }}/toolchain
-        git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 prebuilts-clang --depth=1
-    # -------------------------------------------------------------
+        git clone https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 ${{ github.workspace }}/toolchain --depth=1
 
-    - name: Verify and Prepare Kernel Config
+    - name: Prepare Kernel Configuration
       run: |
         cd ${{ github.workspace }}/gki-kernel
         
+        # Environment variables setup
         export ARCH=arm64
         export SUBARCH=arm64
         export CROSS_COMPILE=aarch64-linux-gnu-
-        export PATH="${{ github.workspace }}/toolchain/prebuilts-clang/clang-r485591/bin:$PATH"
+        export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
         
-        # Aapki .config file ko check aur ready karega
+        # .config ko verify karein (Agar aapne gki-kernel me .config daal rakhi hai)
         make CC=clang CLANG_TRIPLE=aarch64-linux-gnu- olddefconfig
 
     - name: Build Module (.ko)
@@ -51,15 +53,17 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         export CROSS_COMPILE=aarch64-linux-gnu-
-        export PATH="${{ github.workspace }}/toolchain/prebuilts-clang/clang-r485591/bin:$PATH"
+        # Clang ka path set karna zaroori hai
+        export PATH="${{ github.workspace }}/toolchain/bin:$PATH"
         
-        # Aapke 'filetest' folder me jaakar compile karega
+        # filetest folder me jaakar compile karein
         cd ${{ github.workspace }}/filetest
-        make CC=clang CLANG_TRIPLE=aarch64-linux-gnu- KERNEL_SRC=${{ github.workspace }}/gki-kernel
+        
+        # KDIR ko point karein gki-kernel folder ki taraf
+        make CC=clang CLANG_TRIPLE=aarch64-linux-gnu- KDIR=${{ github.workspace }}/gki-kernel
 
-    # --- FIX: Sahi action ka naam yahan hai ---
-    - name: Upload Output File
+    - name: Upload Finished Module
       uses: actions/upload-artifact@v4
       with:
-        name: OnePlus-13R-Test-Module
+        name: OnePlus-13R-Module
         path: filetest/*.ko
