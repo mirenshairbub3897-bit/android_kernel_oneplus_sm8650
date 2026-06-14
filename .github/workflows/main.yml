@@ -12,21 +12,21 @@ jobs:
       with:
         ref: ${{ github.ref_name }}
 
-    - name: Install Essential Build Tools
+    - name: Install Essential Build Tools & Linker
       run: |
         sudo apt-get update
-        sudo apt-get install -y bc bison flex libelf-dev libssl-dev rsync
+        # Built-in Clang ke sath 'lld' package dalna zaroori hai ld.lld ke liye
+        sudo apt-get install -y bc bison flex libelf-dev libssl-dev rsync lld clang llvm
 
     - name: Prepare Kernel Configuration
       run: |
         cd ${{ github.workspace }}
         
-        # Architecture set karenge
         export ARCH=arm64
         export SUBARCH=arm64
         
-        # GitHub ka built-in Clang aur LLD use karne ke liye LLVM=1 force karenge
-        make LLVM=1 CC=clang LD=ld.lld olddefconfig
+        # LLVM=1 ke sath target triple diya hai taaki built-in compiler sahi se configure ho
+        make LLVM=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- olddefconfig
 
     - name: Build Module (.ko)
       run: |
@@ -35,8 +35,8 @@ jobs:
         export ARCH=arm64
         export SUBARCH=arm64
         
-        # GitHub ke default compiler se direct compilation
-        make LLVM=1 CC=clang LD=ld.lld KDIR=${{ github.workspace }}
+        # Built-in compiler se direct module compilation
+        make LLVM=1 CC=clang LD=ld.lld CLANG_TRIPLE=aarch64-linux-gnu- KDIR=${{ github.workspace }}
 
     - name: Upload Finished Module
       uses: actions/upload-artifact@v4
