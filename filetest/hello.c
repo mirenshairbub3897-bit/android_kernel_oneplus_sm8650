@@ -1,20 +1,17 @@
-#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Developer");
-MODULE_DESCRIPTION("OnePlus 13R Custom ESP Module");
-MODULE_VERSION("1.0");
-
 static int __init hello_init(void) {
-    pr_info("ESP Module: Loaded successfully into OnePlus 13R!\n");
+    printk(KERN_INFO "Hello, World from kernel module!\n");
     return 0;
 }
 
 static void __exit hello_exit(void) {
-    pr_info("ESP Module: Unloaded!\n");
+    printk(KERN_INFO "Goodbye, World!\n");
 }
 
 module_init(hello_init);
 module_exit(hello_exit);
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Your Name");
+MODULE_DESCRIPTION("A simple Hello World module");
